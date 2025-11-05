@@ -7,9 +7,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
+// API kiểm tra thông tin Roblox user
 app.get("/api/user/:username", async (req, res) => {
   try {
     const username = req.params.username;
+    if (!username) return res.status(400).json({ error: "Thiếu tên người dùng!" });
+
+    // Gửi yêu cầu tới Roblox API
     const userResp = await fetch("https://users.roblox.com/v1/usernames/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -17,18 +21,22 @@ app.get("/api/user/:username", async (req, res) => {
     });
 
     const userData = await userResp.json();
+
+    // Nếu không tìm thấy user
     if (!userData.data || userData.data.length === 0)
       return res.status(404).json({ error: "Không tìm thấy người dùng Roblox này!" });
 
     const user = userData.data[0];
     const userId = user.id;
 
-    const thumbResp = await fetch(
+    // Lấy avatar
+    const avatarResp = await fetch(
       `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=false`
     );
-    const thumbData = await thumbResp.json();
-    const avatar = thumbData.data?.[0]?.imageUrl || null;
+    const avatarData = await avatarResp.json();
+    const avatarUrl = avatarData?.data?.[0]?.imageUrl || "";
 
+    // Lấy thông tin chi tiết
     const infoResp = await fetch(`https://users.roblox.com/v1/users/${userId}`);
     const infoData = await infoResp.json();
 
@@ -38,14 +46,15 @@ app.get("/api/user/:username", async (req, res) => {
       displayName: user.displayName,
       description: infoData.description || "Không có mô tả",
       created: infoData.created,
-      avatar,
+      avatar: avatarUrl,
       link: `https://www.roblox.com/users/${userId}/profile`,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Lỗi server!", details: err.message });
+    console.error("❌ Lỗi API Roblox:", err);
+    res.status(500).json({ error: "Lỗi server Roblox!", details: err.message });
   }
 });
 
+// Render dùng PORT môi trường
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server đang chạy: http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server đang chạy tại: http://localhost:${PORT}`));
