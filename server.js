@@ -5,40 +5,39 @@ import cors from "cors";
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static("public")); // Đường dẫn tới thư mục chứa web
+app.use(express.static("public"));
 
-// API kiểm tra user Roblox
 app.get("/api/user/:username", async (req, res) => {
   try {
     const username = req.params.username;
-    const response = await fetch("https://users.roblox.com/v1/usernames/users", {
+    const userResp = await fetch("https://users.roblox.com/v1/usernames/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ usernames: [username], excludeBannedUsers: true }),
     });
 
-    const data = await response.json();
-    if (!data.data || data.data.length === 0)
+    const userData = await userResp.json();
+    if (!userData.data || userData.data.length === 0)
       return res.status(404).json({ error: "Không tìm thấy người dùng Roblox này!" });
 
-    const user = data.data[0];
+    const user = userData.data[0];
     const userId = user.id;
 
-    const avatarRes = await fetch(
+    const thumbResp = await fetch(
       `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=false`
     );
-    const avatarData = await avatarRes.json();
-    const avatar = avatarData.data?.[0]?.imageUrl || null;
+    const thumbData = await thumbResp.json();
+    const avatar = thumbData.data?.[0]?.imageUrl || null;
 
-    const infoRes = await fetch(`https://users.roblox.com/v1/users/${userId}`);
-    const info = await infoRes.json();
+    const infoResp = await fetch(`https://users.roblox.com/v1/users/${userId}`);
+    const infoData = await infoResp.json();
 
     res.json({
       id: userId,
       username: user.name,
       displayName: user.displayName,
-      description: info.description || "Không có mô tả",
-      created: info.created,
+      description: infoData.description || "Không có mô tả",
+      created: infoData.created,
       avatar,
       link: `https://www.roblox.com/users/${userId}/profile`,
     });
@@ -48,6 +47,5 @@ app.get("/api/user/:username", async (req, res) => {
   }
 });
 
-// Render yêu cầu PORT môi trường
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server đang chạy: http://localhost:${PORT}`));
